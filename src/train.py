@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 HelloFresh Recipe AI - Training Script
-Train custom YOLOv8 models for food detection and recipe analysis.
+Train custom YOLOv8 models for text detection and ingredient recognition.
 """
 
 import argparse
@@ -12,8 +12,8 @@ from ultralytics import YOLO
 import torch
 
 
-class FoodModelTrainer:
-    """Custom model trainer for food detection."""
+class TextModelTrainer:
+    """Custom model trainer for text detection and ingredient recognition."""
     
     def __init__(self, model_size="n", pretrained=True):
         """
@@ -55,7 +55,7 @@ class FoodModelTrainer:
             'imgsz': img_size,
             'lr0': learning_rate,
             'project': save_dir,
-            'name': f'food_model_{self.model_size}',
+            'name': f'text_model_{self.model_size}',
             'save_period': 10,  # Save checkpoint every 10 epochs
             'patience': 20,     # Early stopping patience
             'cache': True,      # Cache images for faster training
@@ -112,10 +112,10 @@ class FoodModelTrainer:
         return exported_path
 
 
-def create_data_config(data_dir, config_path="configs/food_data.yaml", 
+def create_data_config(data_dir, config_path="configs/text_data.yaml", 
                       class_names=None):
     """
-    Create YOLO data configuration file.
+    Create YOLO data configuration file for text detection.
     
     Args:
         data_dir (str): Path to data directory
@@ -124,12 +124,9 @@ def create_data_config(data_dir, config_path="configs/food_data.yaml",
     """
     
     if class_names is None:
-        # Default food classes - customize as needed
+        # Default text detection classes
         class_names = [
-            'apple', 'banana', 'orange', 'carrot', 'broccoli',
-            'tomato', 'potato', 'onion', 'bell_pepper', 'cucumber',
-            'bread', 'egg', 'milk', 'cheese', 'chicken',
-            'beef', 'fish', 'pasta', 'rice', 'salad'
+            'ingredient_name', 'amount', 'unit', 'text_line'
         ]
     
     data_config = {
@@ -181,7 +178,7 @@ def main():
         
         config_path = create_data_config(
             args.data, 
-            "configs/food_data.yaml",
+            "configs/text_data.yaml",
             args.classes
         )
         data_config = config_path
@@ -189,7 +186,7 @@ def main():
         data_config = args.data
     
     # Initialize trainer
-    trainer = FoodModelTrainer(args.model_size)
+    trainer = TextModelTrainer(args.model_size)
     
     # Export model if requested
     if args.export:
@@ -226,7 +223,7 @@ def main():
     
     # Run validation on best model
     print("\nRunning validation on best model...")
-    best_model_path = Path(args.save_dir) / f'food_model_{args.model_size}' / 'weights' / 'best.pt'
+    best_model_path = Path(args.save_dir) / f'text_model_{args.model_size}' / 'weights' / 'best.pt'
     if best_model_path.exists():
         trainer.validate(data_config, str(best_model_path))
 

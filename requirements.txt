@@ -1,4 +1,4 @@
-# YOLOv8 and Ultralytics
+# YOLOv8 and Ultralytics for text detection
 ultralytics>=8.0.0
 
 # Core dependencies
@@ -16,9 +16,23 @@ tensorboard>=2.4.1
 pandas>=1.1.4
 seaborn>=0.11.0
 
+# OCR and Text Recognition
+pytesseract>=0.3.8
+easyocr>=1.6.0
+paddlepaddle>=2.4.0
+paddleocr>=2.6.0
+
+# Text Processing and NLP
+nltk>=3.7
+spacy>=3.4.0
+regex>=2022.3.15
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.12.2
+
 # Additional ML/AI libraries
 scikit-learn>=0.24.0
 albumentations>=1.0.0
+transformers>=4.20.0
 
 # Image processing
 imageio>=2.9.0

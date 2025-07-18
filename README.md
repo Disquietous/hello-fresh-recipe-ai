@@ -1,23 +1,25 @@
-# HelloFresh Recipe AI - YOLOv8 Image Analysis
+# HelloFresh Recipe AI - Text Detection & Ingredient Recognition
 
-A complete YOLOv8-based computer vision project for food ingredient detection and recipe analysis.
+A complete YOLOv8-based computer vision project for detecting and recognizing ingredient names, amounts, and units from recipe images and text.
 
 ## Features
 
-- **Object Detection**: Detect food ingredients in images and videos using YOLOv8
-- **Custom Training**: Train custom models on your own food datasets
-- **Batch Processing**: Process multiple images and videos efficiently
+- **Text Detection**: Detect text regions containing ingredient information using YOLOv8
+- **OCR Integration**: Extract text using multiple OCR engines (EasyOCR, Tesseract, PaddleOCR)
+- **Ingredient Parsing**: Parse ingredient names, amounts, and units from extracted text
+- **Custom Training**: Train custom models for text detection in recipe contexts
+- **Batch Processing**: Process multiple recipe images efficiently
+- **Data Validation**: Validate and clean extracted ingredient data
 - **Model Export**: Export trained models to various formats (ONNX, TensorRT, etc.)
-- **Data Utilities**: Tools for dataset preparation and validation
 
 ## Project Structure
 
 ```
 hello-fresh-recipe-ai/
 ├── data/                    # Dataset storage
-│   ├── raw/                # Original images and videos
-│   ├── processed/          # Preprocessed data
-│   └── annotations/        # YOLO format labels
+│   ├── raw/                # Original recipe images
+│   ├── processed/          # Preprocessed images
+│   └── annotations/        # YOLO format text detection labels
 ├── models/                 # Model storage
 │   ├── pretrained/         # Downloaded YOLOv8 models
 │   └── custom/            # Trained custom models
@@ -26,9 +28,12 @@ hello-fresh-recipe-ai/
 │   ├── videos/            # Processed videos
 │   └── metrics/           # Training metrics
 ├── src/                   # Source code
-│   ├── detect.py          # Main detection script
-│   ├── train.py           # Training script
+│   ├── text_detect.py     # Text detection and ingredient recognition
+│   ├── detect.py          # Legacy object detection script
+│   ├── train.py           # Training script for text detection
 │   └── utils/             # Utility functions
+│       ├── data_utils.py  # Data preprocessing utilities
+│       └── text_utils.py  # Text processing and parsing utilities
 ├── configs/               # Configuration files
 ├── notebooks/             # Jupyter notebooks
 └── logs/                  # Training logs
@@ -77,37 +82,46 @@ YOLOv8 models will be automatically downloaded when first used. Available models
 
 ## Usage
 
-### Object Detection
+### Text Detection and Ingredient Recognition
+
+**Process Recipe Image:**
+```bash
+python src/text_detect.py recipe_image.jpg --output-image results/annotated_recipe.jpg --output-json results/ingredients.json
+```
+
+**Using Different OCR Engines:**
+```bash
+# Using EasyOCR (default)
+python src/text_detect.py recipe.jpg --ocr-engine easyocr
+
+# Using Tesseract
+python src/text_detect.py recipe.jpg --ocr-engine tesseract
+
+# Using PaddleOCR
+python src/text_detect.py recipe.jpg --ocr-engine paddleocr
+```
+
+**Custom Text Detection Model:**
+```bash
+python src/text_detect.py recipe.jpg --model models/custom/text_model.pt --output-json ingredients.json
+```
+
+### Legacy Object Detection (for reference)
 
 **Single Image:**
 ```bash
 python src/detect.py path/to/image.jpg --output results/detected_image.jpg
 ```
 
-**Video Processing:**
-```bash
-python src/detect.py path/to/video.mp4 --output results/detected_video.mp4
-```
-
-**Batch Processing:**
-```bash
-python src/detect.py data/raw/images/ --output results/batch_results/ --batch
-```
-
-**Advanced Options:**
-```bash
-python src/detect.py image.jpg --model yolov8s.pt --conf 0.5 --save-crops
-```
-
 ### Custom Model Training
 
-**Prepare Dataset:**
-1. Organize your dataset:
+**Prepare Text Detection Dataset:**
+1. Organize your dataset with recipe images and text annotations:
    ```
    data/
    ├── train/
-   │   ├── images/
-   │   └── labels/
+   │   ├── images/        # Recipe images
+   │   └── labels/        # YOLO format text region annotations
    ├── val/
    │   ├── images/
    │   └── labels/
@@ -118,22 +132,22 @@ python src/detect.py image.jpg --model yolov8s.pt --conf 0.5 --save-crops
 
 2. Create data configuration:
    ```bash
-   python src/train.py --data data/ --create-config --classes apple banana orange
+   python src/train.py --data data/ --create-config --classes ingredient_name amount unit text_line
    ```
 
-**Train Model:**
+**Train Text Detection Model:**
 ```bash
-python src/train.py --data configs/food_data.yaml --epochs 100 --batch-size 16
+python src/train.py --data configs/text_data.yaml --epochs 100 --batch-size 16
 ```
 
 **Train with Custom Parameters:**
 ```bash
-python src/train.py --data configs/food_data.yaml --model-size s --epochs 200 --batch-size 32 --lr 0.001
+python src/train.py --data configs/text_data.yaml --model-size s --epochs 200 --batch-size 32 --lr 0.001
 ```
 
 **Validate Model:**
 ```bash
-python src/train.py --data configs/food_data.yaml --validate-only --model-path models/custom/best.pt
+python src/train.py --data configs/text_data.yaml --validate-only --model-path models/custom/best.pt
 ```
 
 **Export Model:**
@@ -143,23 +157,30 @@ python src/train.py --export onnx --model-path models/custom/best.pt
 
 ## Configuration
 
-### Data Configuration (`configs/food_data.yaml`)
-Defines dataset paths and class names for training.
+### Data Configuration (`configs/text_data.yaml`)
+Defines dataset paths and class names for text detection training.
 
 ### Training Configuration (`configs/training_config.yaml`)
 Contains default training parameters and hyperparameters.
 
 ## Development
 
-### Data Preparation
+### Text Processing and Data Preparation
 ```python
+from src.utils.text_utils import IngredientParser, TextPreprocessor
 from src.utils.data_utils import split_dataset, validate_dataset_structure
+
+# Parse ingredient text
+parser = IngredientParser()
+ingredient_data = parser.parse_ingredient_line("2 cups flour")
+print(ingredient_data)
+
+# Preprocess images for better OCR
+preprocessor = TextPreprocessor()
+enhanced_image = preprocessor.enhance_contrast(image)
 
 # Split dataset into train/val/test
 split_dataset('raw_images/', 'raw_labels/', 'data/', (0.7, 0.2, 0.1))
-
-# Validate dataset structure
-validate_dataset_structure('data/')
 ```
 
 ### Jupyter Notebooks
@@ -189,9 +210,11 @@ tensorboard --logdir logs/
 
 ### Common Issues
 
-1. **CUDA not available**: Install PyTorch with CUDA support
-2. **Out of memory**: Reduce batch size or image size
-3. **Dataset not found**: Check paths in data configuration file
+1. **OCR not working**: Install Tesseract OCR system package
+2. **CUDA not available**: Install PyTorch with CUDA support  
+3. **Out of memory**: Reduce batch size or image size
+4. **Poor text recognition**: Try different OCR engines or image preprocessing
+5. **Dataset not found**: Check paths in data configuration file
 
 ### Getting Help
 
