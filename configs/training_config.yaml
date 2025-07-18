@@ -1,0 +1,45 @@
+# HelloFresh Recipe AI - Training Configuration
+# Default training parameters for YOLOv8 models
+
+# Model settings
+model_size: "n"  # n, s, m, l, x
+pretrained: true
+
+# Training parameters
+epochs: 100
+batch_size: 16
+img_size: 640
+learning_rate: 0.01
+patience: 20  # Early stopping patience
+save_period: 10  # Save checkpoint every N epochs
+
+# Data augmentation
+hsv_h: 0.015      # Image HSV-Hue augmentation (fraction)
+hsv_s: 0.7        # Image HSV-Saturation augmentation (fraction)
+hsv_v: 0.4        # Image HSV-Value augmentation (fraction)
+degrees: 0.0      # Image rotation (+/- deg)
+translate: 0.1    # Image translation (+/- fraction)
+scale: 0.5        # Image scale (+/- gain)
+shear: 0.0        # Image shear (+/- deg)
+perspective: 0.0  # Image perspective (+/- fraction), range 0-0.001
+flipud: 0.0       # Image flip up-down (probability)
+fliplr: 0.5       # Image flip left-right (probability)
+mosaic: 1.0       # Image mosaic (probability)
+mixup: 0.0        # Image mixup (probability)
+
+# Optimization
+optimizer: "AdamW"  # AdamW, Adam, SGD, RMSProp
+weight_decay: 0.0005
+momentum: 0.937
+warmup_epochs: 3
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# Validation
+val_period: 1     # Validate every N epochs
+conf: 0.001       # Object confidence threshold for NMS
+iou: 0.7          # IoU threshold for NMS
+
+# Hardware
+workers: 8        # Number of worker threads for data loading
+device: ""        # cuda device, i.e. 0 or 0,1,2,3 or cpu

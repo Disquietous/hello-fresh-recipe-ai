@@ -1,0 +1,36 @@
+# YOLOv8 and Ultralytics
+ultralytics>=8.0.0
+
+# Core dependencies
+torch>=1.7.0
+torchvision>=0.8.0
+opencv-python>=4.1.1
+Pillow>=7.1.2
+numpy>=1.18.5
+matplotlib>=3.2.2
+PyYAML>=5.3.1
+requests>=2.23.0
+scipy>=1.4.1
+tqdm>=4.41.0
+tensorboard>=2.4.1
+pandas>=1.1.4
+seaborn>=0.11.0
+
+# Additional ML/AI libraries
+scikit-learn>=0.24.0
+albumentations>=1.0.0
+
+# Image processing
+imageio>=2.9.0
+
+# Jupyter for experimentation
+jupyter>=1.0.0
+ipywidgets>=7.6.0
+
+# Development tools
+pytest>=6.0.0
+black>=21.0.0
+flake8>=3.8.0
+
+# Optional: GPU support (uncomment if using CUDA)
+# torch-audio>=0.7.0
