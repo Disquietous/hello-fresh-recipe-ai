@@ -1,0 +1,82 @@
+{
+  "ingredients": [
+    "Salt", "Black Pepper", "White Pepper", "Garlic", "Onion", "Shallot",
+    "Butter", "Olive Oil", "Vegetable Oil", "Coconut Oil", "Sesame Oil",
+    "Flour", "All-Purpose Flour", "Bread Flour", "Cake Flour", "Whole Wheat Flour",
+    "Sugar", "Brown Sugar", "Granulated Sugar", "Powdered Sugar", "Honey", "Maple Syrup",
+    "Eggs", "Egg Whites", "Egg Yolks", "Milk", "Heavy Cream", "Sour Cream",
+    "Cream Cheese", "Butter", "Yogurt", "Cheese", "Parmesan Cheese", "Mozzarella",
+    "Chicken Breast", "Chicken Thighs", "Ground Beef", "Beef Steak", "Pork Chops",
+    "Salmon", "Tuna", "Shrimp", "Scallops", "Cod", "Tilapia",
+    "Rice", "Brown Rice", "Jasmine Rice", "Basmati Rice", "Quinoa", "Pasta",
+    "Spaghetti", "Penne", "Fusilli", "Linguine", "Rigatoni", "Macaroni",
+    "Tomatoes", "Cherry Tomatoes", "Roma Tomatoes", "Tomato Paste", "Tomato Sauce",
+    "Bell Pepper", "Red Bell Pepper", "Green Bell Pepper", "Yellow Bell Pepper",
+    "Carrots", "Celery", "Broccoli", "Cauliflower", "Spinach", "Kale", "Lettuce",
+    "Cucumber", "Zucchini", "Yellow Squash", "Eggplant", "Mushrooms", "Button Mushrooms",
+    "Potatoes", "Sweet Potatoes", "Red Potatoes", "Russet Potatoes", "Yukon Gold Potatoes",
+    "Apples", "Bananas", "Oranges", "Lemons", "Limes", "Strawberries", "Blueberries",
+    "Avocado", "Mango", "Pineapple", "Grapes", "Cherries", "Peaches", "Pears",
+    "Basil", "Oregano", "Thyme", "Rosemary", "Parsley", "Cilantro", "Dill",
+    "Cumin", "Paprika", "Chili Powder", "Cayenne Pepper", "Turmeric", "Ginger",
+    "Cinnamon", "Nutmeg", "Vanilla Extract", "Almond Extract", "Bay Leaves",
+    "Soy Sauce", "Fish Sauce", "Worcestershire Sauce", "Hot Sauce", "Vinegar",
+    "Balsamic Vinegar", "Apple Cider Vinegar", "Rice Vinegar", "White Wine Vinegar",
+    "Stock", "Chicken Stock", "Beef Stock", "Vegetable Stock", "Broth",
+    "Wine", "White Wine", "Red Wine", "Cooking Wine", "Beer",
+    "Almonds", "Walnuts", "Pecans", "Cashews", "Pine Nuts", "Peanuts",
+    "Bread", "Breadcrumbs", "Panko", "Crackers", "Tortillas", "Pita Bread",
+    "Beans", "Black Beans", "Kidney Beans", "Chickpeas", "Lentils", "Green Beans",
+    "Corn", "Frozen Corn", "Corn Kernels", "Peas", "Frozen Peas", "Green Peas"
+  ],
+  "categories": {
+    "proteins": [
+      "Chicken Breast", "Chicken Thighs", "Ground Beef", "Beef Steak", "Pork Chops",
+      "Salmon", "Tuna", "Shrimp", "Scallops", "Eggs", "Tofu", "Tempeh"
+    ],
+    "vegetables": [
+      "Tomatoes", "Bell Pepper", "Carrots", "Celery", "Broccoli", "Spinach",
+      "Cucumber", "Zucchini", "Mushrooms", "Potatoes", "Onion", "Garlic"
+    ],
+    "fruits": [
+      "Apples", "Bananas", "Oranges", "Lemons", "Limes", "Strawberries",
+      "Avocado", "Mango", "Pineapple", "Grapes"
+    ],
+    "grains": [
+      "Rice", "Quinoa", "Pasta", "Bread", "Flour", "Oats", "Barley"
+    ],
+    "dairy": [
+      "Milk", "Butter", "Cheese", "Yogurt", "Cream Cheese", "Heavy Cream"
+    ],
+    "herbs_spices": [
+      "Basil", "Oregano", "Thyme", "Rosemary", "Parsley", "Cilantro",
+      "Cumin", "Paprika", "Cinnamon", "Salt", "Black Pepper"
+    ],
+    "pantry": [
+      "Olive Oil", "Vegetable Oil", "Vinegar", "Soy Sauce", "Sugar", "Flour",
+      "Stock", "Vanilla Extract"
+    ]
+  },
+  "units": {
+    "volume": {
+      "metric": ["ml", "l", "liter", "liters", "milliliter", "milliliters"],
+      "imperial": ["cup", "cups", "tbsp", "tablespoon", "tsp", "teaspoon", "fl oz", "pint", "quart", "gallon"]
+    },
+    "weight": {
+      "metric": ["g", "kg", "gram", "grams", "kilogram", "kilograms"],
+      "imperial": ["oz", "lb", "ounce", "ounces", "pound", "pounds"]
+    },
+    "count": ["piece", "pieces", "item", "items", "clove", "cloves", "slice", "slices"],
+    "descriptive": ["pinch", "dash", "handful", "bunch", "sprig", "head", "stalk"]
+  },
+  "common_preparations": [
+    "chopped", "diced", "minced", "sliced", "grated", "shredded", "julienned",
+    "peeled", "seeded", "crushed", "ground", "whole", "halved", "quartered",
+    "fresh", "dried", "frozen", "canned", "cooked", "raw", "roasted", "grilled"
+  ],
+  "exclusions": [
+    "recipe", "instructions", "directions", "serves", "serving", "servings",
+    "prep time", "cook time", "total time", "difficulty", "calories",
+    "ingredients", "method", "step", "steps", "note", "notes", "tip", "tips"
+  ]
+}

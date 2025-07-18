@@ -1,16 +1,26 @@
-# HelloFresh Recipe AI - Text Detection & Ingredient Recognition
+# HelloFresh Recipe AI - Ingredient Extraction Pipeline
 
-A complete YOLOv8-based computer vision project for detecting and recognizing ingredient names, amounts, and units from recipe images and text.
+A complete computer vision pipeline for extracting structured ingredient data from recipe images using YOLOv8 text detection, multiple OCR engines, and intelligent parsing.
 
-## Features
+## 🚀 Pipeline Overview
 
-- **Text Detection**: Detect text regions containing ingredient information using YOLOv8
-- **OCR Integration**: Extract text using multiple OCR engines (EasyOCR, Tesseract, PaddleOCR)
-- **Ingredient Parsing**: Parse ingredient names, amounts, and units from extracted text
-- **Custom Training**: Train custom models for text detection in recipe contexts
-- **Batch Processing**: Process multiple recipe images efficiently
-- **Data Validation**: Validate and clean extracted ingredient data
-- **Model Export**: Export trained models to various formats (ONNX, TensorRT, etc.)
+The system processes recipe images through a 5-stage pipeline:
+
+1. **📋 Text Region Detection** - YOLOv8 identifies ingredient text blocks
+2. **🔍 OCR Text Extraction** - Multiple engines extract text from regions  
+3. **⚙️ Text Preprocessing** - Enhanced image processing for better OCR
+4. **🧠 Ingredient Parsing** - NLP-based parsing of quantities, units, and names
+5. **📊 Structured Output** - Validated JSON with confidence scores
+
+## ✨ Features
+
+- **Multi-Stage Pipeline**: Complete workflow from image → structured data
+- **Multiple OCR Engines**: EasyOCR, PaddleOCR, Tesseract with fallback support
+- **Intelligent Parsing**: Extract quantities, units, and ingredient names
+- **Quality Validation**: Confidence scoring and data quality assessment
+- **Flexible Configuration**: JSON-based configuration system
+- **Batch Processing**: Process multiple images efficiently
+- **Custom Training**: Train models for specific recipe formats
 
 ## Project Structure
 
@@ -27,16 +37,21 @@ hello-fresh-recipe-ai/
 │   ├── images/            # Processed images
 │   ├── videos/            # Processed videos
 │   └── metrics/           # Training metrics
-├── src/                   # Source code
-│   ├── text_detect.py     # Text detection and ingredient recognition
-│   ├── detect.py          # Legacy object detection script
-│   ├── train.py           # Training script for text detection
-│   └── utils/             # Utility functions
-│       ├── data_utils.py  # Data preprocessing utilities
-│       └── text_utils.py  # Text processing and parsing utilities
-├── configs/               # Configuration files
+├── src/                     # Source code
+│   ├── ingredient_pipeline.py  # Main pipeline orchestrator
+│   ├── text_detect.py          # Individual text detection script
+│   ├── train.py                # Training script for text detection
+│   └── utils/                  # Utility functions
+│       ├── text_utils.py       # Text processing and parsing
+│       └── data_utils.py       # Data preprocessing utilities
+├── configs/                 # Configuration files
+│   ├── pipeline_config.json    # Main pipeline configuration
+│   ├── text_data.yaml          # Training data configuration
+│   ├── training_config.yaml    # Training parameters
+│   └── ingredients.json        # Ingredient database
+├── examples/               # Usage examples and sample scripts
 ├── notebooks/             # Jupyter notebooks
-└── logs/                  # Training logs
+└── logs/                  # Training and pipeline logs
 ```
 
 ## Setup Instructions
@@ -80,48 +95,70 @@ YOLOv8 models will be automatically downloaded when first used. Available models
 - `yolov8l.pt` - Large
 - `yolov8x.pt` - Extra Large (slowest, most accurate)
 
-## Usage
+## 📋 Usage
 
-### Text Detection and Ingredient Recognition
+### Main Ingredient Extraction Pipeline
 
-**Process Recipe Image:**
+**Basic Usage:**
 ```bash
-python src/text_detect.py recipe_image.jpg --output-image results/annotated_recipe.jpg --output-json results/ingredients.json
+# Process a single recipe image
+python src/ingredient_pipeline.py recipe_image.jpg --output-dir results/
+
+# With custom configuration
+python src/ingredient_pipeline.py recipe.jpg --config configs/pipeline_config.json --output-dir results/
+
+# Using different OCR engine
+python src/ingredient_pipeline.py recipe.jpg --ocr-engine paddleocr --confidence 0.3
 ```
 
-**Using Different OCR Engines:**
+**Batch Processing:**
 ```bash
-# Using EasyOCR (default)
-python src/text_detect.py recipe.jpg --ocr-engine easyocr
-
-# Using Tesseract
-python src/text_detect.py recipe.jpg --ocr-engine tesseract
-
-# Using PaddleOCR
-python src/text_detect.py recipe.jpg --ocr-engine paddleocr
+# Process multiple images
+for image in *.jpg; do
+    python src/ingredient_pipeline.py "$image" --output-dir "results/$(basename "$image" .jpg)"
+done
 ```
 
-**Custom Text Detection Model:**
-```bash
-python src/text_detect.py recipe.jpg --model models/custom/text_model.pt --output-json ingredients.json
+**Python API Usage:**
+```python
+from src.ingredient_pipeline import IngredientExtractionPipeline
+
+# Initialize pipeline
+pipeline = IngredientExtractionPipeline()
+
+# Process image
+results = pipeline.process_image('recipe.jpg', 'results/')
+
+# Access structured data
+for ingredient in results['ingredients']:
+    print(f"{ingredient['quantity']} {ingredient['unit']} {ingredient['ingredient_name']}")
 ```
 
-### Legacy Object Detection (for reference)
+### Individual Components
 
-**Single Image:**
+**Text Detection Only:**
 ```bash
-python src/detect.py path/to/image.jpg --output results/detected_image.jpg
+python src/text_detect.py recipe.jpg --output-image results/annotated.jpg --output-json results/raw_text.json
+```
+
+**Ingredient Parsing Only:**
+```python
+from src.utils.text_utils import IngredientParser
+
+parser = IngredientParser()
+result = parser.parse_ingredient_line("2 cups all-purpose flour")
+print(result)  # {'ingredient_name': 'Flour', 'amount': '2', 'unit': 'cups', ...}
 ```
 
 ### Custom Model Training
 
 **Prepare Text Detection Dataset:**
-1. Organize your dataset with recipe images and text annotations:
+1. Organize your dataset with recipe images and text region annotations:
    ```
    data/
    ├── train/
-   │   ├── images/        # Recipe images
-   │   └── labels/        # YOLO format text region annotations
+   │   ├── images/          # Recipe images
+   │   └── labels/          # YOLO format annotations for ingredient text blocks
    ├── val/
    │   ├── images/
    │   └── labels/
@@ -130,9 +167,11 @@ python src/detect.py path/to/image.jpg --output results/detected_image.jpg
        └── labels/
    ```
 
-2. Create data configuration:
-   ```bash
-   python src/train.py --data data/ --create-config --classes ingredient_name amount unit text_line
+2. Annotation format for ingredient text blocks:
+   ```
+   # Each line in label file: class_id x_center y_center width height
+   0 0.5 0.3 0.4 0.05  # ingredient_line: "2 cups flour"
+   1 0.5 0.4 0.6 0.15  # ingredient_block: multi-line ingredient section
    ```
 
 **Train Text Detection Model:**
@@ -140,14 +179,9 @@ python src/detect.py path/to/image.jpg --output results/detected_image.jpg
 python src/train.py --data configs/text_data.yaml --epochs 100 --batch-size 16
 ```
 
-**Train with Custom Parameters:**
+**Advanced Training:**
 ```bash
 python src/train.py --data configs/text_data.yaml --model-size s --epochs 200 --batch-size 32 --lr 0.001
-```
-
-**Validate Model:**
-```bash
-python src/train.py --data configs/text_data.yaml --validate-only --model-path models/custom/best.pt
 ```
 
 **Export Model:**
@@ -155,32 +189,93 @@ python src/train.py --data configs/text_data.yaml --validate-only --model-path m
 python src/train.py --export onnx --model-path models/custom/best.pt
 ```
 
-## Configuration
+## ⚙️ Configuration
 
-### Data Configuration (`configs/text_data.yaml`)
-Defines dataset paths and class names for text detection training.
+### Pipeline Configuration (`configs/pipeline_config.json`)
+Main configuration file controlling all pipeline stages:
 
-### Training Configuration (`configs/training_config.yaml`)
-Contains default training parameters and hyperparameters.
+```json
+{
+  "text_detection": {
+    "model_path": "yolov8n.pt",
+    "confidence_threshold": 0.25
+  },
+  "ocr": {
+    "engine": "easyocr",
+    "fallback_engines": ["paddleocr", "tesseract"]
+  },
+  "parsing": {
+    "min_confidence": 0.5,
+    "normalize_ingredients": true
+  },
+  "output": {
+    "save_annotated_image": true,
+    "output_format": "json"
+  }
+}
+```
 
-## Development
+### Training Configuration (`configs/text_data.yaml`)
+Dataset configuration for training text detection models:
 
-### Text Processing and Data Preparation
-```python
-from src.utils.text_utils import IngredientParser, TextPreprocessor
-from src.utils.data_utils import split_dataset, validate_dataset_structure
+```yaml
+path: ./data
+train: train/images
+val: val/images
+nc: 2
+names:
+  0: ingredient_line
+  1: ingredient_block
+```
 
-# Parse ingredient text
-parser = IngredientParser()
-ingredient_data = parser.parse_ingredient_line("2 cups flour")
-print(ingredient_data)
+## 📊 Output Format
 
-# Preprocess images for better OCR
-preprocessor = TextPreprocessor()
-enhanced_image = preprocessor.enhance_contrast(image)
+The pipeline produces structured JSON output:
 
-# Split dataset into train/val/test
-split_dataset('raw_images/', 'raw_labels/', 'data/', (0.7, 0.2, 0.1))
+```json
+{
+  "source_image": "recipe.jpg",
+  "pipeline_version": "1.0",
+  "detection_summary": {
+    "total_regions_detected": 5,
+    "high_confidence_ingredients": 3,
+    "medium_confidence_ingredients": 2,
+    "low_confidence_ingredients": 0
+  },
+  "ingredients": [
+    {
+      "ingredient_name": "All-Purpose Flour",
+      "quantity": "2",
+      "unit": "cups",
+      "unit_category": "volume",
+      "confidence_scores": {
+        "overall": 0.85,
+        "ingredient_recognition": 0.9,
+        "text_detection": 0.8,
+        "ocr_quality": 0.85
+      },
+      "raw_text": "2 cups all-purpose flour",
+      "bounding_box": {
+        "x1": 100, "y1": 150, "x2": 300, "y2": 180
+      }
+    }
+  ],
+  "validation_results": {
+    "validation_score": 0.85,
+    "overall_quality": "good"
+  }
+}
+```
+
+## 🛠️ Development
+
+### Examples and Testing
+```bash
+# Run comprehensive examples
+python examples/basic_usage.py
+
+# Test individual components
+python -c "from src.utils.text_utils import IngredientParser; parser = IngredientParser(); print(parser.parse_ingredient_line('2 cups flour'))"
 ```
 
 ### Jupyter Notebooks
@@ -210,11 +305,24 @@ tensorboard --logdir logs/
 
 ### Common Issues
 
-1. **OCR not working**: Install Tesseract OCR system package
-2. **CUDA not available**: Install PyTorch with CUDA support  
-3. **Out of memory**: Reduce batch size or image size
-4. **Poor text recognition**: Try different OCR engines or image preprocessing
-5. **Dataset not found**: Check paths in data configuration file
+1. **No ingredients detected**
+   - Check image quality and text visibility
+   - Adjust confidence thresholds
+   - Try different OCR engines
+
+2. **Poor ingredient parsing**
+   - Verify text is in English
+   - Check ingredient database coverage
+   - Enable text preprocessing
+
+3. **OCR errors**
+   - Install Tesseract system package: `apt install tesseract-ocr` (Linux) or `brew install tesseract` (macOS)
+   - For Windows: Download from [GitHub releases](https://github.com/UB-Mannheim/tesseract/wiki)
+
+4. **Performance issues**
+   - Use GPU acceleration when available
+   - Reduce image size for faster processing
+   - Use smaller YOLO models (yolov8n vs yolov8s)
 
 ### Getting Help
 

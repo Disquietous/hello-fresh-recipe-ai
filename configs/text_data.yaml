@@ -1,5 +1,5 @@
 # HelloFresh Recipe AI - Text Detection Dataset Configuration
-# YOLO data configuration for ingredient text detection and recognition
+# YOLO data configuration for ingredient text block detection
 
 # Dataset paths
 path: ./data  # Root directory
@@ -8,11 +8,9 @@ val: val/images      # Validation images (relative to 'path')
 test: test/images    # Test images (relative to 'path')
 
 # Number of classes
-nc: 4
+nc: 2
 
-# Class names for text detection
+# Class names optimized for ingredient text blocks
 names:
-  0: ingredient_name  # Text containing ingredient names
-  1: amount          # Numerical amounts (1, 2.5, 1/2, etc.)
-  2: unit            # Measurement units (cups, tbsp, oz, etc.)
-  3: text_line       # General text lines in recipes
+  0: ingredient_line  # Complete ingredient lines (e.g., "2 cups flour")
+  1: ingredient_block # Multi-line ingredient blocks

@@ -35,21 +35,22 @@ venv\Scripts\activate     # Windows
 
 ### Core Operations
 ```bash
-# Text detection and ingredient recognition
-python src/text_detect.py recipe.jpg --output-image results/annotated.jpg --output-json results/ingredients.json
+# Main ingredient extraction pipeline
+python src/ingredient_pipeline.py recipe.jpg --output-dir results/
 
-# Use different OCR engines
-python src/text_detect.py recipe.jpg --ocr-engine easyocr
-python src/text_detect.py recipe.jpg --ocr-engine tesseract
-python src/text_detect.py recipe.jpg --ocr-engine paddleocr
+# With custom configuration
+python src/ingredient_pipeline.py recipe.jpg --config configs/pipeline_config.json
+
+# Different OCR engines
+python src/ingredient_pipeline.py recipe.jpg --ocr-engine paddleocr --confidence 0.3
+
+# Individual text detection
+python src/text_detect.py recipe.jpg --output-image results/annotated.jpg
 
 # Train custom text detection model
 python src/train.py --data configs/text_data.yaml --epochs 100
 
-# Validate trained model
-python src/train.py --data configs/text_data.yaml --validate-only --model-path models/custom/best.pt
-
-# Export model to ONNX
+# Export trained model
 python src/train.py --export onnx --model-path models/custom/best.pt
 ```
 
@@ -68,11 +69,13 @@ python -c "from src.utils.data_utils import validate_dataset_structure; validate
 ## Project Architecture
 
 ### Core Components
-- `src/text_detect.py` - Main text detection and ingredient recognition script with IngredientTextDetector class
-- `src/detect.py` - Legacy object detection script (kept for reference)
-- `src/train.py` - Training script with TextModelTrainer class for custom text detection models
-- `src/utils/text_utils.py` - Text processing, ingredient parsing, and validation utilities
+- `src/ingredient_pipeline.py` - Main pipeline orchestrator with IngredientExtractionPipeline class
+- `src/text_detect.py` - Individual text detection script with IngredientTextDetector class
+- `src/train.py` - Training script with TextModelTrainer class for custom models
+- `src/utils/text_utils.py` - Text processing, parsing, and validation (IngredientParser, TextPreprocessor)
 - `src/utils/data_utils.py` - Dataset utilities for preprocessing and validation
+- `configs/pipeline_config.json` - Main pipeline configuration
+- `configs/ingredients.json` - Ingredient database and units
 
 ### Data Flow
 1. **Raw data** → `data/raw/` (original recipe images)
@@ -115,12 +118,14 @@ data/
 
 ## Development Notes
 
-- Use `IngredientTextDetector` class for text detection and ingredient recognition
-- Use `TextModelTrainer` class for training text detection models  
+- Use `IngredientExtractionPipeline` class for complete end-to-end processing
+- Use `IngredientTextDetector` class for individual text detection tasks
+- Use `TextModelTrainer` class for training custom text detection models  
 - Use `IngredientParser` class for parsing ingredient text
-- Text utilities in `src/utils/text_utils.py` for processing and validation
-- Data utilities in `src/utils/data_utils.py` for preprocessing
+- Pipeline supports multiple OCR engines with automatic fallback
+- Configuration-driven approach - modify `configs/pipeline_config.json` for different settings
 - All paths should be absolute or relative to project root
-- Training automatically saves to `runs/detect/` or `runs/train/` subdirectories
-- OCR engines can be switched between EasyOCR, Tesseract, and PaddleOCR
-- Text preprocessing improves OCR accuracy significantly
+- Training saves to `models/custom/` directory
+- Results include confidence scores and validation metrics
+- Text preprocessing significantly improves OCR accuracy
+- Examples in `examples/` directory show comprehensive usage patterns

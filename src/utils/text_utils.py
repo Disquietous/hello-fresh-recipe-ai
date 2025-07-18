@@ -194,7 +194,7 @@ class IngredientParser:
     
     def parse_ingredient_line(self, text: str) -> Dict:
         """
-        Parse a complete ingredient line.
+        Parse a complete ingredient line with enhanced parsing.
         
         Args:
             text (str): Ingredient line text
@@ -205,6 +205,9 @@ class IngredientParser:
         original_text = text.strip()
         working_text = original_text.lower()
         
+        # Clean text first
+        working_text = self._clean_text(working_text)
+        
         # Extract amount
         amount, working_text = self.extract_amount(working_text)
         
@@ -214,15 +217,125 @@ class IngredientParser:
         # Identify ingredient
         ingredient_name, confidence = self.identify_ingredient(working_text)
         
+        # Enhanced validation
+        is_valid = self._validate_parsing_result(amount, unit, ingredient_name, confidence)
+        
         return {
             'original_text': original_text,
-            'amount': amount,
+            'amount': self._normalize_amount(amount) if amount else None,
             'unit': unit,
             'unit_category': unit_category,
-            'ingredient_name': ingredient_name,
+            'ingredient_name': self._normalize_ingredient_name(ingredient_name) if ingredient_name else None,
             'confidence_score': confidence,
-            'parsed_successfully': bool(ingredient_name and confidence > 0.5)
+            'parsed_successfully': is_valid,
+            'parsing_quality': self._assess_parsing_quality(amount, unit, ingredient_name, confidence)
         }
+    
+    def _clean_text(self, text: str) -> str:
+        """Clean and normalize text for better parsing."""
+        # Remove extra whitespace
+        text = ' '.join(text.split())
+        
+        # Handle common OCR errors
+        text = text.replace('|', 'l')  # Common OCR error
+        text = text.replace('0', 'o')  # In ingredient names
+        text = re.sub(r'[^\w\s\./\-]', ' ', text)  # Remove special chars except useful ones
+        
+        return text.strip()
+    
+    def _normalize_amount(self, amount: str) -> str:
+        """Normalize amount format."""
+        if not amount:
+            return None
+        
+        # Convert common fractions
+        fraction_map = {
+            '1/2': '0.5',
+            '1/3': '0.33',
+            '2/3': '0.67',
+            '1/4': '0.25',
+            '3/4': '0.75',
+            '1/8': '0.125',
+            '3/8': '0.375',
+            '5/8': '0.625',
+            '7/8': '0.875'
+        }
+        
+        for fraction, decimal in fraction_map.items():
+            if fraction in amount:
+                amount = amount.replace(fraction, decimal)
+        
+        return amount.strip()
+    
+    def _normalize_ingredient_name(self, ingredient: str) -> str:
+        """Normalize ingredient name."""
+        if not ingredient:
+            return None
+        
+        # Capitalize first letter of each word
+        ingredient = ' '.join(word.capitalize() for word in ingredient.split())
+        
+        # Handle special cases
+        special_cases = {
+            'Salt': 'Salt',
+            'Black Pepper': 'Black Pepper',
+            'Olive Oil': 'Olive Oil',
+            'Soy Sauce': 'Soy Sauce'
+        }
+        
+        for special, correct in special_cases.items():
+            if special.lower() in ingredient.lower():
+                ingredient = correct
+        
+        return ingredient
+    
+    def _validate_parsing_result(self, amount: str, unit: str, ingredient: str, confidence: float) -> bool:
+        """Validate if parsing result makes sense."""
+        # Must have at least ingredient name
+        if not ingredient or confidence < 0.3:
+            return False
+        
+        # If we have amount, it should be reasonable
+        if amount:
+            try:
+                amount_val = float(amount.replace('/', '.'))
+                if amount_val <= 0 or amount_val > 1000:  # Reasonable bounds
+                    return False
+            except ValueError:
+                # Non-numeric amounts like "a few" are ok
+                pass
+        
+        # If we have unit without amount, that's suspicious
+        if unit and not amount:
+            return False
+        
+        return True
+    
+    def _assess_parsing_quality(self, amount: str, unit: str, ingredient: str, confidence: float) -> str:
+        """Assess overall quality of parsing."""
+        if not ingredient:
+            return 'poor'
+        
+        score = confidence
+        
+        # Bonus for having amount and unit
+        if amount and unit:
+            score += 0.2
+        elif amount:
+            score += 0.1
+        
+        # Penalty for very short ingredient names
+        if ingredient and len(ingredient.split()) == 1 and len(ingredient) < 4:
+            score -= 0.2
+        
+        if score >= 0.8:
+            return 'excellent'
+        elif score >= 0.6:
+            return 'good'
+        elif score >= 0.4:
+            return 'fair'
+        else:
+            return 'poor'
 
 
 class TextPreprocessor:
@@ -231,26 +344,56 @@ class TextPreprocessor:
     @staticmethod
     def enhance_contrast(image: np.ndarray) -> np.ndarray:
         """Enhance image contrast for better OCR."""
-        # Convert to LAB color space
-        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-        
-        # Apply CLAHE to L channel
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-        enhanced_l = clahe.apply(l)
-        
-        # Merge channels
-        enhanced_lab = cv2.merge([enhanced_l, a, b])
-        enhanced_bgr = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
-        
-        return enhanced_bgr
+        if len(image.shape) == 3:
+            # Convert to LAB color space
+            lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            
+            # Apply CLAHE to L channel
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            enhanced_l = clahe.apply(l)
+            
+            # Merge channels
+            enhanced_lab = cv2.merge([enhanced_l, a, b])
+            enhanced_bgr = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+            
+            return enhanced_bgr
+        else:
+            # Grayscale image
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            return clahe.apply(image)
     
     @staticmethod
     def remove_noise(image: np.ndarray) -> np.ndarray:
         """Remove noise from image."""
-        # Bilateral filter to reduce noise while preserving edges
-        filtered = cv2.bilateralFilter(image, 9, 75, 75)
+        if len(image.shape) == 3:
+            # Bilateral filter to reduce noise while preserving edges
+            filtered = cv2.bilateralFilter(image, 9, 75, 75)
+        else:
+            # For grayscale, use Gaussian blur
+            filtered = cv2.GaussianBlur(image, (3, 3), 0)
         return filtered
+    
+    @staticmethod
+    def binarize_image(image: np.ndarray) -> np.ndarray:
+        """Convert image to binary for better OCR."""
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+        
+        # Use adaptive thresholding
+        binary = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        )
+        return binary
+    
+    @staticmethod
+    def dilate_text(image: np.ndarray, kernel_size: Tuple[int, int] = (2, 2)) -> np.ndarray:
+        """Dilate text to improve connectivity."""
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
+        dilated = cv2.dilate(image, kernel, iterations=1)
+        return dilated
     
     @staticmethod
     def correct_skew(image: np.ndarray) -> np.ndarray:
