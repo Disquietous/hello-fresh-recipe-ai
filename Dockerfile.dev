@@ -1,0 +1,109 @@
+# Development Dockerfile for Recipe Processing API
+# Optimized for development with hot reload and debugging
+
+FROM python:3.9-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Development tools
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
+    pkg-config \
+    git \
+    vim \
+    curl \
+    wget \
+    unzip \
+    # Image processing libraries
+    libhdf5-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libgtk2.0-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libv4l-dev \
+    libatlas-base-dev \
+    gfortran \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgtk-3-0 \
+    # OCR dependencies
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-spa \
+    tesseract-ocr-fra \
+    tesseract-ocr-deu \
+    tesseract-ocr-ita \
+    libtesseract-dev \
+    libleptonica-dev \
+    # Fonts
+    fonts-liberation \
+    fonts-dejavu-core \
+    # Development utilities
+    htop \
+    procps \
+    tree \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for development
+RUN groupadd -r recipedev && useradd -r -g recipedev recipedev
+
+# Create application directories
+RUN mkdir -p /app /app/logs /app/cache /app/models /app/temp /app/data \
+    && chown -R recipedev:recipedev /app
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt requirements-dev.txt /app/
+
+# Install Python dependencies
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    pip install -r requirements-dev.txt
+
+# Install debugging tools
+RUN pip install \
+    debugpy \
+    ipython \
+    jupyter \
+    pytest \
+    pytest-asyncio \
+    pytest-cov \
+    black \
+    flake8 \
+    mypy \
+    pre-commit
+
+# Create additional directories
+RUN mkdir -p /var/log/recipe-processing \
+    && chown -R recipedev:recipedev /var/log/recipe-processing
+
+# Switch to non-root user
+USER recipedev
+
+# Set Python path
+ENV PYTHONPATH="/app:/app/src:$PYTHONPATH"
+
+# Expose ports
+EXPOSE 8000 8080 5678
+
+# Default command for development
+CMD ["python", "-m", "uvicorn", "src.api.recipe_processing_api:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]

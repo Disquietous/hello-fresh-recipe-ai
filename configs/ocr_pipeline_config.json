@@ -1,0 +1,61 @@
+{
+  "text_detection": {
+    "model_path": "yolov8n.pt",
+    "confidence_threshold": 0.25,
+    "device": "auto",
+    "target_classes": [0, 1],
+    "merge_overlapping": true,
+    "iou_threshold": 0.5,
+    "min_region_area": 100,
+    "region_padding": 5
+  },
+  "ocr": {
+    "engines": ["easyocr", "tesseract", "paddleocr"],
+    "primary_engine": "easyocr",
+    "enable_fallback": true,
+    "min_confidence": 0.3,
+    "preprocessing_variants": false,
+    "tesseract_config": "--oem 3 --psm 6",
+    "easyocr_config": {
+      "languages": ["en"],
+      "gpu": false
+    },
+    "paddleocr_config": {
+      "lang": "en",
+      "use_gpu": false
+    }
+  },
+  "text_cleaning": {
+    "enabled": true,
+    "aggressive_mode": false,
+    "min_improvement_threshold": 0.1
+  },
+  "ingredient_parsing": {
+    "min_confidence": 0.3,
+    "normalize_units": true,
+    "extract_preparations": true,
+    "validate_ingredients": true,
+    "max_quantity": 1000
+  },
+  "output": {
+    "save_annotated_image": true,
+    "save_region_images": false,
+    "include_debug_info": false,
+    "output_format": "json",
+    "confidence_threshold": 0.0,
+    "include_metadata": true,
+    "include_confidence_scores": true,
+    "include_bounding_boxes": false,
+    "round_confidences": 3
+  },
+  "performance": {
+    "max_image_size": 2048,
+    "enable_gpu": true,
+    "parallel_processing": false
+  },
+  "logging": {
+    "level": "INFO",
+    "save_logs": false,
+    "log_file": "ocr_pipeline.log"
+  }
+}

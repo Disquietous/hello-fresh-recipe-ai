@@ -1,0 +1,328 @@
+# Docker Compose for Recipe Processing System
+# Production-ready setup with all required services
+
+version: '3.8'
+
+services:
+  # Main API service
+  recipe-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: recipe-processing-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # API port
+      - "8080:8080"  # Metrics port
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://recipe_user:recipe_password@postgres:5432/recipe_processing
+      
+      # Redis
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      
+      # API Configuration
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      
+      # Processing Configuration
+      - MAX_FILE_SIZE=10485760  # 10MB
+      - PROCESSING_TIMEOUT=300
+      - MAX_BATCH_SIZE=1000
+      - MAX_WORKERS_PER_BATCH=10
+      
+      # Caching
+      - ENABLE_COMPRESSION=true
+      - DEFAULT_CACHE_TTL=3600
+      - CACHE_DIR=/app/cache
+      
+      # Monitoring
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - PROMETHEUS_PUSHGATEWAY_URL=http://prometheus:9091
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - LOG_FILE=/app/logs/app.log
+      
+      # Error Handling
+      - MAX_RETRIES=3
+      - CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+      - ENABLE_ERROR_TRACKING=true
+      
+    volumes:
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./models:/app/models
+      - ./data:/app/data
+      - recipe_temp:/app/temp
+    depends_on:
+      - postgres
+      - redis
+      - jaeger
+    networks:
+      - recipe-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Celery worker for batch processing
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: recipe-celery-worker
+    restart: unless-stopped
+    environment:
+      # Same environment as API
+      - DATABASE_URL=postgresql://recipe_user:recipe_password@postgres:5432/recipe_processing
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    volumes:
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./models:/app/models
+      - ./data:/app/data
+      - recipe_temp:/app/temp
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - recipe-network
+    command: ["celery", "-A", "src.api.batch_processor", "worker", "--loglevel=info", "--concurrency=4"]
+
+  # Celery beat scheduler
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: recipe-celery-beat
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://recipe_user:recipe_password@postgres:5432/recipe_processing
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    volumes:
+      - ./logs:/app/logs
+      - celery_beat_data:/app/celerybeat-schedule
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - recipe-network
+    command: ["celery", "-A", "src.api.batch_processor", "beat", "--loglevel=info"]
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:14-alpine
+    container_name: recipe-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=recipe_processing
+      - POSTGRES_USER=recipe_user
+      - POSTGRES_PASSWORD=recipe_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - recipe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recipe_user -d recipe_processing"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis cache and message broker
+  redis:
+    image: redis:7-alpine
+    container_name: recipe-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - recipe-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: recipe-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - recipe-network
+
+  # Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: recipe-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - recipe-network
+    depends_on:
+      - prometheus
+
+  # Jaeger tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: recipe-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    volumes:
+      - jaeger_data:/tmp
+    networks:
+      - recipe-network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: recipe-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - recipe-api
+    networks:
+      - recipe-network
+
+  # Flower for Celery monitoring
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: recipe-flower
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: ["celery", "-A", "src.api.batch_processor", "flower", "--port=5555"]
+    depends_on:
+      - redis
+    networks:
+      - recipe-network
+
+  # PgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: recipe-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@recipe.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - recipe-network
+
+  # File storage (MinIO for object storage)
+  minio:
+    image: minio/minio:latest
+    container_name: recipe-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - recipe-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+networks:
+  recipe-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  jaeger_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  minio_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  celery_beat_data:
+    driver: local
+  recipe_temp:
+    driver: local

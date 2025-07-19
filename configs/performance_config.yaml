@@ -1,0 +1,257 @@
+# Performance Configuration for Recipe Processing API
+# Optimized settings for different deployment environments
+
+# Environment-specific configurations
+environments:
+  development:
+    # Processing settings
+    max_workers: 2
+    max_concurrent_requests: 4
+    processing_timeout: 120
+    max_file_size: 5242880  # 5MB
+    
+    # Cache settings
+    enable_caching: true
+    cache_ttl: 300  # 5 minutes
+    max_cache_size: 100
+    cache_compression: false
+    
+    # OCR settings
+    ocr_confidence_threshold: 0.25
+    ocr_quality_threshold: 0.5
+    preferred_ocr_engines: ["easyocr", "tesseract"]
+    
+    # Memory management
+    gc_threshold: 0.8
+    memory_limit_mb: 512
+    batch_size_limit: 10
+    
+    # Error handling
+    max_retries: 2
+    retry_delay: 1.0
+    circuit_breaker_threshold: 10
+    
+  staging:
+    # Processing settings
+    max_workers: 4
+    max_concurrent_requests: 8
+    processing_timeout: 90
+    max_file_size: 10485760  # 10MB
+    
+    # Cache settings
+    enable_caching: true
+    cache_ttl: 900  # 15 minutes
+    max_cache_size: 500
+    cache_compression: true
+    
+    # OCR settings
+    ocr_confidence_threshold: 0.3
+    ocr_quality_threshold: 0.6
+    preferred_ocr_engines: ["paddleocr", "easyocr", "tesseract"]
+    
+    # Memory management
+    gc_threshold: 0.75
+    memory_limit_mb: 1024
+    batch_size_limit: 25
+    
+    # Error handling
+    max_retries: 3
+    retry_delay: 2.0
+    circuit_breaker_threshold: 20
+    
+  production:
+    # Processing settings
+    max_workers: 8
+    max_concurrent_requests: 16
+    processing_timeout: 60
+    max_file_size: 20971520  # 20MB
+    
+    # Cache settings
+    enable_caching: true
+    cache_ttl: 3600  # 1 hour
+    max_cache_size: 2000
+    cache_compression: true
+    
+    # OCR settings
+    ocr_confidence_threshold: 0.4
+    ocr_quality_threshold: 0.7
+    preferred_ocr_engines: ["paddleocr", "easyocr"]
+    
+    # Memory management
+    gc_threshold: 0.7
+    memory_limit_mb: 2048
+    batch_size_limit: 50
+    
+    # Error handling
+    max_retries: 5
+    retry_delay: 3.0
+    circuit_breaker_threshold: 50
+
+# Performance monitoring settings
+monitoring:
+  # Metrics collection
+  enable_metrics: true
+  metrics_interval: 10  # seconds
+  metrics_retention: 168  # hours (7 days)
+  
+  # Health checks
+  health_check_interval: 30  # seconds
+  health_check_timeout: 10   # seconds
+  
+  # Alerting thresholds
+  alerts:
+    response_time_threshold: 30.0  # seconds
+    memory_usage_threshold: 0.85   # 85%
+    cpu_usage_threshold: 0.8       # 80%
+    error_rate_threshold: 0.05     # 5%
+    success_rate_threshold: 0.95   # 95%
+    
+  # Performance targets
+  targets:
+    avg_response_time: 5.0         # seconds
+    p95_response_time: 15.0        # seconds
+    p99_response_time: 30.0        # seconds
+    throughput_rps: 10             # requests per second
+    availability: 0.999            # 99.9%
+
+# Optimization settings
+optimization:
+  # Image preprocessing
+  auto_resize: true
+  max_image_dimension: 2048
+  image_quality: 85
+  
+  # Text detection optimization
+  yolo_confidence: 0.5
+  yolo_iou_threshold: 0.4
+  batch_text_detection: true
+  
+  # OCR optimization
+  ocr_pooling: true
+  ocr_pool_size: 4
+  ocr_preprocessing: true
+  
+  # Database optimization
+  connection_pool_size: 20
+  connection_pool_overflow: 30
+  query_timeout: 30
+  
+  # Cache optimization
+  cache_warming: true
+  cache_prefetch: true
+  cache_cleanup_interval: 3600  # 1 hour
+
+# Resource limits
+resources:
+  # CPU limits
+  cpu_cores: null  # null = auto-detect
+  cpu_affinity: null
+  
+  # Memory limits
+  max_memory_mb: null  # null = no limit
+  swap_usage: false
+  
+  # Disk I/O
+  temp_dir_size_mb: 1024
+  log_rotation_size_mb: 100
+  log_retention_days: 7
+  
+  # Network
+  max_connections: 1000
+  keep_alive_timeout: 5
+  read_timeout: 30
+  write_timeout: 30
+
+# Benchmark configuration
+benchmarking:
+  # Test scenarios
+  test_scenarios:
+    - name: "single_image"
+      description: "Single image processing"
+      image_count: 1
+      concurrent_requests: 1
+      duration: 60
+      
+    - name: "low_concurrency"
+      description: "Low concurrency processing"
+      image_count: 10
+      concurrent_requests: 2
+      duration: 120
+      
+    - name: "medium_concurrency"
+      description: "Medium concurrency processing"
+      image_count: 20
+      concurrent_requests: 4
+      duration: 300
+      
+    - name: "high_concurrency"
+      description: "High concurrency processing"
+      image_count: 50
+      concurrent_requests: 8
+      duration: 600
+      
+    - name: "stress_test"
+      description: "Stress testing limits"
+      image_count: 100
+      concurrent_requests: 16
+      duration: 900
+  
+  # Performance thresholds
+  thresholds:
+    max_response_time: 30.0        # seconds
+    min_success_rate: 0.95         # 95%
+    max_memory_usage: 0.8          # 80%
+    max_cpu_usage: 0.8             # 80%
+    min_throughput: 1.0            # ops/second
+  
+  # Test data
+  test_data:
+    image_formats: ["jpg", "png", "webp"]
+    image_sizes: 
+      - [800, 600]
+      - [1024, 768]
+      - [1920, 1080]
+      - [2048, 1536]
+    recipe_types: ["cookbook", "handwritten", "digital", "blog"]
+    languages: ["en", "es", "fr", "de"]
+
+# Auto-scaling configuration
+autoscaling:
+  # Scaling triggers
+  triggers:
+    cpu_threshold: 0.7             # Scale up at 70% CPU
+    memory_threshold: 0.8          # Scale up at 80% memory
+    queue_length_threshold: 10     # Scale up at 10 queued requests
+    response_time_threshold: 15.0  # Scale up at 15s response time
+  
+  # Scaling parameters
+  min_instances: 1
+  max_instances: 10
+  scale_up_cooldown: 300           # 5 minutes
+  scale_down_cooldown: 600         # 10 minutes
+  scale_up_increment: 1
+  scale_down_increment: 1
+  
+  # Health check requirements
+  health_check_grace_period: 60    # seconds
+  consecutive_health_checks: 3
+
+# Profiling configuration
+profiling:
+  # CPU profiling
+  cpu_profiling_enabled: false
+  cpu_profiling_interval: 0.01    # seconds
+  cpu_profiling_duration: 60      # seconds
+  
+  # Memory profiling
+  memory_profiling_enabled: false
+  memory_profiling_interval: 1    # seconds
+  memory_profiling_precision: 3
+  
+  # I/O profiling
+  io_profiling_enabled: false
+  io_profiling_duration: 60       # seconds
+  
+  # Output settings
+  profiling_output_dir: "profiles"
+  profiling_retention_days: 30

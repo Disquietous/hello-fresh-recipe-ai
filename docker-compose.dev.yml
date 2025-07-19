@@ -1,0 +1,222 @@
+# Docker Compose for Development Environment
+# Simplified setup for development with hot reload and debugging
+
+version: '3.8'
+
+services:
+  # Main API service - Development mode
+  recipe-api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: recipe-api-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # API port
+      - "8080:8080"  # Metrics port
+      - "5678:5678"  # Debug port
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://recipe_user:recipe_password@postgres-dev:5432/recipe_processing_dev
+      
+      # Redis
+      - REDIS_URL=redis://redis-dev:6379
+      - CELERY_BROKER_URL=redis://redis-dev:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-dev:6379/0
+      
+      # Development settings
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - SECRET_KEY=dev-secret-key-not-for-production
+      
+      # Processing Configuration
+      - MAX_FILE_SIZE=5242880  # 5MB (smaller for dev)
+      - PROCESSING_TIMEOUT=120
+      - MAX_BATCH_SIZE=50
+      - MAX_WORKERS_PER_BATCH=2
+      
+      # Caching - Disabled for development
+      - ENABLE_COMPRESSION=false
+      - DEFAULT_CACHE_TTL=300
+      - CACHE_DIR=/app/cache
+      
+      # Monitoring - Local only
+      - SENTRY_DSN=
+      - JAEGER_ENDPOINT=http://jaeger-dev:14268/api/traces
+      
+      # Logging - Verbose for development
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=text
+      - LOG_FILE=/app/logs/app.log
+      
+      # Error Handling - More lenient
+      - MAX_RETRIES=2
+      - CIRCUIT_BREAKER_FAILURE_THRESHOLD=10
+      - ENABLE_ERROR_TRACKING=false
+      
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./models:/app/models
+      - ./data:/app/data
+      - dev_temp:/app/temp
+    depends_on:
+      - postgres-dev
+      - redis-dev
+    networks:
+      - recipe-dev-network
+    command: ["python", "-m", "uvicorn", "src.api.recipe_processing_api:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+
+  # Celery worker - Development
+  celery-worker-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: recipe-celery-worker-dev
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://recipe_user:recipe_password@postgres-dev:5432/recipe_processing_dev
+      - REDIS_URL=redis://redis-dev:6379
+      - CELERY_BROKER_URL=redis://redis-dev:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-dev:6379/0
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./models:/app/models
+      - ./data:/app/data
+      - dev_temp:/app/temp
+    depends_on:
+      - postgres-dev
+      - redis-dev
+    networks:
+      - recipe-dev-network
+    command: ["celery", "-A", "src.api.batch_processor", "worker", "--loglevel=debug", "--concurrency=2"]
+
+  # PostgreSQL - Development
+  postgres-dev:
+    image: postgres:14-alpine
+    container_name: recipe-postgres-dev
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=recipe_processing_dev
+      - POSTGRES_USER=recipe_user
+      - POSTGRES_PASSWORD=recipe_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db-dev.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    networks:
+      - recipe-dev-network
+
+  # Redis - Development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: recipe-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    networks:
+      - recipe-dev-network
+
+  # Jaeger tracing - Development
+  jaeger-dev:
+    image: jaegertracing/all-in-one:latest
+    container_name: recipe-jaeger-dev
+    restart: unless-stopped
+    ports:
+      - "16687:16686"  # Different port for UI
+      - "14269:14268"  # Different port for collector
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    networks:
+      - recipe-dev-network
+
+  # Flower for Celery monitoring - Development
+  flower-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: recipe-flower-dev
+    restart: unless-stopped
+    ports:
+      - "5556:5555"  # Different port
+    environment:
+      - CELERY_BROKER_URL=redis://redis-dev:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-dev:6379/0
+    volumes:
+      - .:/app
+    command: ["celery", "-A", "src.api.batch_processor", "flower", "--port=5555"]
+    depends_on:
+      - redis-dev
+    networks:
+      - recipe-dev-network
+
+  # MailHog for email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: recipe-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - recipe-dev-network
+
+  # Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: recipe-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis-dev:6379
+    depends_on:
+      - redis-dev
+    networks:
+      - recipe-dev-network
+
+  # PgAdmin for database management - Development
+  pgadmin-dev:
+    image: dpage/pgadmin4:latest
+    container_name: recipe-pgadmin-dev
+    restart: unless-stopped
+    ports:
+      - "5051:80"  # Different port
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=dev@recipe.com
+      - PGADMIN_DEFAULT_PASSWORD=dev123
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+    depends_on:
+      - postgres-dev
+    networks:
+      - recipe-dev-network
+
+networks:
+  recipe-dev-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_dev_data:
+    driver: local
+  dev_temp:
+    driver: local
